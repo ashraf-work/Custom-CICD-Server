@@ -1,0 +1,126 @@
+{
+  "projects": [
+    {
+      "name": "Storage-App",
+      "repository": "ashraf/Storage-App",
+      "branch": "main",
+      "localPath": "P:/Storage-App",
+
+      "components": [
+        {
+          "name": "Server",
+          "path": "Server/",
+          "mode": "remote",
+          "ssh": {
+            "host": "43.204.27.212",
+            "user": "ubuntu",
+            "keyPath": "C:/Users/ashraf/.ssh/StorageApp",
+            "remotePath": "/home/ubuntu/Storage-App/Server"
+          },
+          "dependencyFiles": [
+            "Server/package.json",
+            "Server/package-lock.json"
+          ],
+          "env": [],
+          "commands": {
+            "pull": "git pull origin main",
+            "install": "npm ci",
+            "deploy": "pm2 reload Storemystuff"
+          }
+        },
+        {
+          "name": "Client",
+          "path": "Client/",
+          "mode": "local",
+          "dependencyFiles": [
+            "Client/package.json",
+            "Client/package-lock.json"
+          ],
+          "env": [
+            "S3_BUCKET",
+            "CF_DISTRIBUTION_ID",
+            "VITE_GOOGLE_CLIENT_ID",
+            "VITE_GOOGLE_API_KEY",
+            "VITE_GOOGLE_APP_ID",
+            "VITE_BACKEND_URL"
+          ],
+          "commands": {
+            "install": "npm ci",
+            "build": "npm run build",
+            "deploy": [
+              "aws s3 sync dist/ \"s3://$S3_BUCKET\" --delete",
+              "aws cloudfront create-invalidation --distribution-id \"$CF_DISTRIBUTION_ID\" --paths '/*'"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Storage-App-Beta",
+      "repository": "ashraf/Storage-App",
+      "branch": "beta",
+      "localPath": "P:/Storage-App-Beta",
+
+      "components": [
+        {
+          "name": "Server",
+          "path": "Server/",
+          "mode": "remote",
+          "ssh": {
+            "host": "43.204.27.212",
+            "user": "ubuntu",
+            "keyPath": "C:/Users/ashraf/.ssh/StorageApp",
+            "remotePath": "/home/ubuntu/Storage-App-Beta/Server"
+          },
+          "healthCheck": {
+            "type": "pm2",
+            "processName": "beta-storemystuff"
+          },
+          "dependencyFiles": [
+            "Server/package.json",
+            "Server/package-lock.json"
+          ],
+          "env": [],
+          "commands": {
+            "pull": "git pull origin beta",
+            "install": "npm ci",
+            "deploy": "pm2 reload beta-storemystuff"
+          }
+        },
+        {
+          "name": "Client",
+          "path": "Client/",
+          "mode": "local",
+          "dependencyFiles": [
+            "Client/package.json",
+            "Client/package-lock.json"
+          ],
+          "healthCheck": {
+            "type": "http",
+            "url": "https://beta.storemystuff.cloud",
+            "expectedStatus": 200,
+            "timeout": 10000,
+            "retries": 3,
+            "delay": 5000
+          },
+          "env": [
+            "S3_BUCKET_BETA",
+            "CF_DISTRIBUTION_ID_BETA",
+            "VITE_GOOGLE_CLIENT_ID_BETA",
+            "VITE_GOOGLE_API_KEY_BETA",
+            "VITE_GOOGLE_APP_ID_BETA",
+            "VITE_BACKEND_URL_BETA"
+          ],
+          "commands": {
+            "install": "npm ci",
+            "build": "VITE_BACKEND_URL=$VITE_BACKEND_URL_BETA npm run build",
+            "deploy": [
+              "aws s3 sync dist/ \"s3://$S3_BUCKET_BETA\" --delete",
+              "aws cloudfront create-invalidation --distribution-id \"$CF_DISTRIBUTION_ID_BETA\" --paths '/*'"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
