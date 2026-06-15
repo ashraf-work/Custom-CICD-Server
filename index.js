@@ -1,37 +1,19 @@
-/**
- * Node modules
- */
 import "dotenv/config";
 import express from "express";
 
-/**
- * Custom modules
- */
 import { verifySignature } from "./middlewares/verifySignature.js";
 import { processDeployment } from "./services/deploy_service.js";
 import { syncRepo } from "./services/git_services.js";
-import { sendTelegramAlert } from "./services/telegram_service.js";
 import { setCommitStatus } from "./services/github_status_service.js";
 
-/**
- * Configurations
- */
 import config from "./config/cicd_config.json" with { type: "json" };
-
-/**
- * In-memory store for runs
- */
 import { runs } from "./store/runs.js";
-import { CICDError } from "./utils/CICDError.js";
 
 const app = express();
 const PORT = process.env.PORT;
 
 app.use(express.json());
 
-/**
- * Health Check endpoint
- */
 app.get("/health", (_, res) => {
   res.status(200).json({
     status: "OK",
@@ -41,18 +23,15 @@ app.get("/health", (_, res) => {
   });
 });
 
-/**
- * GitHub Webhook endpoint
- */
 app.post("/webhook/github", verifySignature, async (req, res) => {
   res.status(200).send("OK");
+
   const webhookBody = req.body || {};
   const repo = webhookBody?.repository?.full_name;
   const branch = webhookBody?.ref?.replace("refs/heads/", "");
   const commits = webhookBody?.commits || [];
   const commitSha = webhookBody?.after;
 
-  // Find the matching project configuration
   const project = config.projects.find(
     (p) => p.repository === repo && p.branch === branch
   );
@@ -72,7 +51,6 @@ app.post("/webhook/github", verifySignature, async (req, res) => {
   });
 
   try {
-    // Set status pending when the pipeline starts.
     await setCommitStatus({
       repo,
       sha: commitSha,
@@ -81,20 +59,16 @@ app.post("/webhook/github", verifySignature, async (req, res) => {
       targetUrl: target_url,
     });
 
-    // Sync the repository before deployment
     await syncRepo(project, webhookBody?.repository?.clone_url);
 
-    // Process the deployment for the project
     await processDeployment(project, commits, {
       commitMessage: webhookBody.head_commit?.message,
       commitAuthor: webhookBody.head_commit?.author?.name,
     });
 
-    // Update run status
     runs.get(commitSha).status = "success";
     runs.get(commitSha).finishedAt = new Date().toISOString();
 
-    // Set status success when the pipeline completes.
     await setCommitStatus({
       repo,
       sha: commitSha,
@@ -105,12 +79,10 @@ app.post("/webhook/github", verifySignature, async (req, res) => {
   } catch (error) {
     console.error("Deployment failed:", error);
 
-    // Update run status
     runs.get(commitSha).status = "failure";
     runs.get(commitSha).finishedAt = new Date().toISOString();
     runs.get(commitSha).error = error.message;
 
-    // Set status failure when the pipeline fails.
     await setCommitStatus({
       repo,
       sha: commitSha,
@@ -121,10 +93,6 @@ app.post("/webhook/github", verifySignature, async (req, res) => {
   }
 });
 
-/**
- * Get Run Details endpoint
- *  Returns details of a specific run based on commit SHA
- */
 app.get("/runs/:commitSha", (req, res) => {
   const run = runs.get(req.params.commitSha);
 

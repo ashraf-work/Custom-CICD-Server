@@ -1,18 +1,7 @@
-/**
- * Sets the status of a commit on GitHub.
- * @param {Object} params - Parameters for setting the commit status
- * @param {string} params.repo - Full repository name (e.g., "owner/repo")
- * @param {string} params.sha - Commit SHA to set the status for
- * @param {string} params.state - State of the status (pending, success, failure, error)
- * @param {string} params.description - Short description of the status
- * @param {string} params.targetUrl - URL to link to for more details
- * @param {string} [params.context] - Context of the status (default: "Custom CI/CD")
- * @returns {Promise<void>}
- */
 export const setCommitStatus = async ({
   repo,
   sha,
-  state, // pending | success | failure | error
+  state,
   description,
   targetUrl,
   context = "Custom CI/CD Server",

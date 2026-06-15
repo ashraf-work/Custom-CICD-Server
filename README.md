@@ -38,7 +38,7 @@ A lightweight, configuration-driven CI/CD server built with Node.js and Express.
   - **Remote**: Deploys applications on remote servers via SSH.
 - **Health Checks**: Verify deployments are working before marking as successful.
 - **Automatic Rollback**: Reverts to Last Known Good (LKG) state on deployment or health check failure.
-- **Notifications**: Sends success/failure/rollback alerts via Telegram.
+- **Notifications**: Sends success/failure/rollback alerts via email using Resend.
 
 ---
 
@@ -88,9 +88,10 @@ For remote deployments:
    # GitHub Personal Access Token (for commit status updates)
    GITHUB_TOKEN=your_github_token
 
-   # Telegram Notifications
-   TELEGRAM_BOT_TOKEN=your_bot_token
-   TELEGRAM_CHAT_ID=your_chat_id
+   # Email Notifications
+   RESEND_API_KEY=your_resend_api_key
+   EMAIL_FROM="CI/CD Server <deploy@yourdomain.com>"
+   EMAIL_TO=admin@yourdomain.com
    ```
 
 4. **Create configuration file**:
@@ -424,13 +425,13 @@ The CI/CD server implements an automatic rollback system using the **Last Known 
 ├─────────────────────────────────────────────────────────────────┤
 │  3. ON SUCCESS                                                  │
 │     └── Save current commit SHA as LKG                          │
-│     └── Send success notification via Telegram                  │
+│     └── Send success notification via email                     │
 ├─────────────────────────────────────────────────────────────────┤
 │  4. ON FAILURE → AUTOMATIC ROLLBACK                             │
 │     └── Fetch all branches: git fetch --all                     │
 │     └── Reset to LKG: git reset --hard <lkg_sha>                │
 │     └── Re-run: install → build → deploy                        │
-│     └── Send rollback notification via Telegram                 │
+│     └── Send rollback notification via email                    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -472,13 +473,13 @@ The LKG data is stored in `store/lkg.json` and persists across server restarts.
 | LKG commit not found      | Skip rollback, send alert for manual intervention |
 | Rollback itself fails     | Send failure alert, manual intervention required |
 
-### Telegram Notifications
+### Email Notifications
 
-The system sends Telegram notifications for all rollback events:
+The system sends Resend email notifications for deployment and rollback events:
 
 **Rollback Success:**
 ```
-🔄 CI/CD Rollback Successful
+CI/CD Rollback Successful
 
 Project: My-Project
 Component: Backend-API
@@ -491,7 +492,7 @@ Time: 2025-12-21T12:00:00.000Z
 
 **Rollback Failure:**
 ```
-💥 CI/CD Rollback Failed
+CI/CD Rollback Failed
 
 Project: My-Project
 Component: Backend-API
@@ -502,7 +503,7 @@ LKG Deployed At: 2025-12-21T10:30:00.000Z
 Error:
 <error message>
 
-⚠️ Manual intervention required!
+Manual intervention required!
 
 Time: 2025-12-21T12:00:00.000Z
 ```
@@ -534,7 +535,7 @@ Time: 2025-12-21T12:00:00.000Z
 │   ├── lkg_service.js       # LKG storage and retrieval
 │   ├── rollback_service.js  # Rollback logic
 │   ├── ssh_service.js       # SSH command execution
-│   └── telegram_service.js  # Telegram notifications
+│   └── email_service.js     # Email notifications
 ├── store/
 │   ├── lkg.json             # LKG state (auto-generated)
 │   └── runs.js              # In-memory run tracking

@@ -1,24 +1,10 @@
-/**
- * Node modules
- */
 import { exec } from "child_process";
 import fs from "node:fs";
 import os from "node:os";
 
-/**
- * Custom modules
- */
-import { run } from "./deploy_service.js";
+import { runCommand } from "../utils/commandRunner.js";
 import { CICDError } from "../utils/CICDError.js";
 
-/**
- * Run deployment commands over SSH
- * @param {Object} project - The project configuration object
- * @param {Object} component - The component configuration object
- * @param {Object} commands - The deployment commands
- * @param {Object} context - Additional context for environment variables
- * @return {Promise<void>}
- */
 export const runSSHCommands = async (
   project,
   component,
@@ -35,7 +21,6 @@ export const runSSHCommands = async (
     });
   }
 
-  // Validate SSH configuration
   const { host, user, port = 22, remotePath, keyPath } = ssh;
   if (!host || !user || !remotePath) {
     throw new CICDError({
@@ -47,7 +32,6 @@ export const runSSHCommands = async (
     });
   }
 
-  // Validate SSH key path
   if (!keyPath || !fs.existsSync(keyPath)) {
     throw new CICDError({
       stage: "ssh-key",
@@ -57,7 +41,7 @@ export const runSSHCommands = async (
     });
   }
 
-  // Check SSH key permissions on non-Windows systems
+  // SSH keys must not be readable by other users.
   if (os.platform() !== "win32") {
     const stat = fs.statSync(keyPath);
     if ((stat.mode & 0o077) !== 0) {
@@ -70,8 +54,7 @@ export const runSSHCommands = async (
     }
   }
 
-  // SSH connectivity preflight check
-  await run(
+  await runCommand(
     [
       "ssh",
       `-i "${keyPath}"`,
@@ -90,23 +73,20 @@ export const runSSHCommands = async (
     }
   );
 
-  // Build environment variable prefix for remote commands
   const envPrefix = buildEnvPrefix(context.env || []);
   for (const command of commands) {
-    // Construct the full remote command to execute over SSH
-    const remoteCmd = `${envPrefix} cd "${remotePath}" && ${command}`;
+    const remoteCmd = `cd "${remotePath}" && ${envPrefix} ${command}`;
     const escaped = remoteCmd.replace(/'/g, `'\\''`);
 
-    // Full SSH command to be executed locally
     const sshCommand = [
       "ssh",
-      "-o BatchMode=yes", // Disable password prompts
-      "-o StrictHostKeyChecking=no", // Disable host key checking
-      "-o UserKnownHostsFile=/dev/null", // Do not store host keys
+      "-o BatchMode=yes",
+      "-o StrictHostKeyChecking=no",
+      "-o UserKnownHostsFile=/dev/null",
       `-i "${keyPath}"`,
       `-p ${port}`,
       `${user}@${host}`,
-      `"bash -lc '${escaped}'"`, // Use bash login shell on remote side for proper env loading
+      `"bash -lc '${escaped}'"`,
     ].join(" ");
 
     await runSSH(sshCommand, undefined, {
@@ -117,11 +97,6 @@ export const runSSHCommands = async (
   }
 };
 
-/**
- * Builds a string of environment variable assignments
- * @param {Array} keys - List of environment variable keys
- * @returns {string} - Environment variable assignments as a string
- */
 const buildEnvPrefix = (keys = []) => {
   return keys
     .map((key) => {
@@ -131,13 +106,6 @@ const buildEnvPrefix = (keys = []) => {
     .join(" ");
 };
 
-/**
- * Runs an SSH command
- * @param {string} sshCommand - The full SSH command to execute
- * @param {string} cwd - The current working directory
- * @param {Object} context - Context information for error handling
- * @returns {Promise<string>} - Resolves with command output or rejects with error
- */
 const runSSH = (sshCommand, cwd, context) => {
   return new Promise((resolve, reject) => {
     exec(sshCommand, { cwd }, (err, stdout, stderr) => {

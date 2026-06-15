@@ -1,10 +1,10 @@
 {
   "projects": [
     {
-      "name": "Storage-App",
-      "repository": "ashraf/Storage-App",
+      "name": "Storage-App-main",
+      "repository": "ashraf-work/Ragesto",
       "branch": "main",
-      "localPath": "P:/Storage-App",
+      "localPath": "/home/ashraf/Documents/Storage-App-main",
 
       "components": [
         {
@@ -12,10 +12,10 @@
           "path": "Server/",
           "mode": "remote",
           "ssh": {
-            "host": "43.204.27.212",
+            "host": "16.170.210.19",
             "user": "ubuntu",
-            "keyPath": "C:/Users/ashraf/.ssh/StorageApp",
-            "remotePath": "/home/ubuntu/Storage-App/Server"
+            "keyPath": "/home/ashraf/.ssh/ragesto.pem",
+            "remotePath": "/home/ubuntu/Ragesto/Server"
           },
           "dependencyFiles": [
             "Server/package.json",
@@ -25,7 +25,7 @@
           "commands": {
             "pull": "git pull origin main",
             "install": "npm ci",
-            "deploy": "pm2 reload Storemystuff"
+            "deploy": "pm2 reload Ragesto"
           }
         },
         {
@@ -97,7 +97,7 @@
           ],
           "healthCheck": {
             "type": "http",
-            "url": "https://beta.storemystuff.cloud",
+            "url": "https://beta.ragesto.cloud",
             "expectedStatus": 200,
             "timeout": 10000,
             "retries": 3,
